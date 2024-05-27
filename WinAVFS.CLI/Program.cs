@@ -1,7 +1,6 @@
-﻿using System;
-using WinAVFS.Core;
+﻿using WinAvfs.Core;
 
-namespace WinAVFS.CLI
+namespace WinAvfs.CLI
 {
     internal class Program
     {
@@ -14,7 +13,7 @@ namespace WinAVFS.CLI
                 return;
             }
 
-            var fs = new ReadOnlyAVFS(new SevenZipProvider(args[0]));
+            var fs = new ReadOnlyAvfs(new SevenZipProvider(args[0]));
             fs.Mount(args[1]);
         }
     }

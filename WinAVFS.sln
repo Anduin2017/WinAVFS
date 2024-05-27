@@ -1,8 +1,8 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WinAVFS.Core", "WinAVFS.Core\WinAVFS.Core.csproj", "{0FEB6B9C-FD58-4F32-B704-F1A85F967340}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WinAvfs.Core", "WinAVFS.Core\WinAvfs.Core.csproj", "{0FEB6B9C-FD58-4F32-B704-F1A85F967340}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WinAVFS.CLI", "WinAVFS.CLI\WinAVFS.CLI.csproj", "{0769F9F7-0BC5-4A7C-A8DC-BAD02D4C8E6B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WinAvfs.Cli", "WinAVFS.Cli\WinAvfs.Cli.csproj", "{0769F9F7-0BC5-4A7C-A8DC-BAD02D4C8E6B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -1,33 +1,24 @@
-﻿using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
+﻿using System.Collections.Concurrent;
 
-namespace WinAVFS.Core
+namespace WinAvfs.Core
 {
-    public class ConcurrentObjectPool<T>
+    public class ConcurrentObjectPool<T>(Func<T> factory)
     {
-        private readonly ConcurrentBag<T> pool;
-        private readonly Func<T> factory;
-
-        public ConcurrentObjectPool(Func<T> factory)
-        {
-            this.pool = new ConcurrentBag<T>();
-            this.factory = factory;
-        }
+        private readonly ConcurrentBag<T> _pool = new();
 
         public T Get()
         {
-            return this.pool.TryTake(out var item) ? item : factory();
+            return _pool.TryTake(out var item) ? item : factory();
         }
 
         public void Put(T item)
         {
-            this.pool.Add(item);
+            _pool.Add(item);
         }
 
         public T[] GetAll()
         {
-            return this.pool.ToArray();
+            return _pool.ToArray();
         }
     }
 }

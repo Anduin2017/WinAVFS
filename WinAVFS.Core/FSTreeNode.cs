@@ -1,20 +1,18 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 
-namespace WinAVFS.Core
+namespace WinAvfs.Core
 {
-    public class FSTreeNode
+    public class FsTreeNode
     {
-        public FSTreeNode Parent { get; private set; }
+        public FsTreeNode Parent { get; private set; }
 
-        public string Name { get; private set; } = "";
+        public string Name { get; private set; } = string.Empty;
 
-        public string FullName { get; private set; } = "";
+        public string FullName { get; private set; } = string.Empty;
 
-        public long Length { get; private set; } = 0;
+        public long Length { get; private set; }
 
-        public long CompressedLength { get; private set; } = 0;
+        public long CompressedLength { get; private set; }
 
         public DateTime? CreationTime { get; internal set; }
 
@@ -22,52 +20,52 @@ namespace WinAVFS.Core
 
         public DateTime? LastWriteTime { get; internal set; }
 
-        public Dictionary<string, FSTreeNode> Children { get; }
+        public Dictionary<string, FsTreeNode> Children { get; }
 
-        public bool IsDirectory => this.Children != null;
+        public bool IsDirectory => Children != null;
 
         public object Context { get; internal set; }
 
         public IntPtr Buffer { get; internal set; } = IntPtr.Zero;
 
-        private bool extracted = false;
+        private bool _extracted;
 
-        public FSTreeNode() : this(false)
+        public FsTreeNode() : this(false)
         {
         }
 
-        public FSTreeNode(bool isDirectory)
+        public FsTreeNode(bool isDirectory)
         {
             if (isDirectory)
             {
-                this.Children = new Dictionary<string, FSTreeNode>();
+                Children = new Dictionary<string, FsTreeNode>();
             }
         }
 
-        public FSTreeNode GetOrAddChild(bool isDirectory, string name, long length = 0, long compressedLength = 0,
+        public FsTreeNode GetOrAddChild(bool isDirectory, string name, long length = 0, long compressedLength = 0,
             object context = null)
         {
-            if (this.Children == null)
+            if (Children == null)
             {
                 return null;
             }
 
             var caseInsensitiveName = name.ToLower();
-            if (this.Children.ContainsKey(caseInsensitiveName))
+            if (Children.TryGetValue(caseInsensitiveName, out var addChild))
             {
-                return this.Children[caseInsensitiveName];
+                return addChild;
             }
 
-            var child = new FSTreeNode(isDirectory)
+            var child = new FsTreeNode(isDirectory)
             {
                 Parent = this,
                 Name = name,
-                FullName = $"{this.FullName}\\{name}",
+                FullName = $"{FullName}\\{name}",
                 Length = length,
                 CompressedLength = compressedLength,
                 Context = context,
             };
-            this.Children[caseInsensitiveName] = child;
+            Children[caseInsensitiveName] = child;
 
             if (!isDirectory)
             {
@@ -85,24 +83,24 @@ namespace WinAVFS.Core
 
         public void FillBuffer(Action<IntPtr> extractAction)
         {
-            if (this.extracted || this.IsDirectory)
+            if (_extracted || IsDirectory)
             {
                 return;
             }
 
             lock (this)
             {
-                if (!this.extracted)
+                if (!_extracted)
                 {
-                    if (this.Buffer == IntPtr.Zero)
+                    if (Buffer == IntPtr.Zero)
                     {
-                        this.Buffer = Marshal.AllocHGlobal((IntPtr) this.Length);
+                        Buffer = Marshal.AllocHGlobal((IntPtr) Length);
                     }
 
                     try
                     {
-                        extractAction(this.Buffer);
-                        this.extracted = true;
+                        extractAction(Buffer);
+                        _extracted = true;
                     }
                     catch (Exception ex)
                     {

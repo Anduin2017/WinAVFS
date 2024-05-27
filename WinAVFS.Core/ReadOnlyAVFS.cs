@@ -1,73 +1,63 @@
-﻿using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
+﻿using System.Collections.Concurrent;
 using System.Security.AccessControl;
 using DokanNet;
 using DokanNet.Logging;
 using FileAccess = DokanNet.FileAccess;
 
-namespace WinAVFS.Core
+namespace WinAvfs.Core
 {
-    public class ReadOnlyAVFS : IDokanOperationsUnsafe
+    public class ReadOnlyAvfs(IArchiveProvider archiveProvider) : IDokanOperationsUnsafe
     {
-        private IArchiveProvider archiveProvider;
-        private FSTree fsTree;
-
-        public ReadOnlyAVFS(IArchiveProvider archiveProvider)
-        {
-            this.archiveProvider = archiveProvider;
-        }
+        private FsTree _fsTree;
 
         public void Mount(string mountPoint)
         {
-            this.Unmount(mountPoint);
+            Unmount(mountPoint);
 
-            this.fsTree = this.archiveProvider.ReadFSTree();
+            _fsTree = archiveProvider.ReadFsTree();
             this.Mount(mountPoint, DokanOptions.WriteProtection | DokanOptions.MountManager, new NullLogger());
         }
 
         public void Unmount(string mountPoint)
         {
             Dokan.RemoveMountPoint(mountPoint);
-            this.fsTree = null;
+            _fsTree = null;
         }
 
         #region Private helper methods
 
-        private static readonly FileInformation[] EmptyFileInformation = new FileInformation[0];
-        private readonly DateTime defaultTime = DateTime.Now;
+        private static readonly FileInformation[] EmptyFileInformation = [];
+        private readonly DateTime _defaultTime = DateTime.Now;
 
-        private readonly ConcurrentDictionary<string, FSTreeNode> nodeCache =
-            new ConcurrentDictionary<string, FSTreeNode>();
+        private readonly ConcurrentDictionary<string, FsTreeNode> _nodeCache =
+            new ConcurrentDictionary<string, FsTreeNode>();
 
-        private FSTreeNode GetNode(string fileName, IDokanFileInfo info = null)
+        private FsTreeNode GetNode(string fileName, IDokanFileInfo info = null)
         {
             if (info?.Context != null)
             {
-                return (FSTreeNode) info.Context;
+                return (FsTreeNode) info.Context;
             }
 
             fileName = fileName.ToLower();
-            if (nodeCache.TryGetValue(fileName, out var nodeFromCache))
+            if (_nodeCache.TryGetValue(fileName, out var nodeFromCache))
             {
                 return nodeFromCache;
             }
 
             var paths = fileName.Split('\\');
-            var node = this.fsTree.Root;
+            var node = _fsTree.Root;
             foreach (var path in paths.Where(y => !string.IsNullOrEmpty(y)))
             {
-                if (!node.IsDirectory || !node.Children.ContainsKey(path))
+                if (!node.IsDirectory || !node.Children.TryGetValue(path, out var child))
                 {
                     return null;
                 }
 
-                node = node.Children[path];
+                node = child;
             }
 
-            nodeCache.TryAdd(fileName, node);
+            _nodeCache.TryAdd(fileName, node);
             return node;
         }
 
@@ -85,7 +75,7 @@ namespace WinAVFS.Core
 
             if (info.Context == null)
             {
-                var node = this.GetNode(fileName);
+                var node = GetNode(fileName);
                 if (node == null)
                 {
                     if (mode == FileMode.OpenOrCreate)
@@ -123,13 +113,13 @@ namespace WinAVFS.Core
             IDokanFileInfo info)
         {
             bytesRead = 0;
-            var node = this.GetNode(fileName, info);
+            var node = GetNode(fileName, info);
             if (node == null)
             {
                 return NtStatus.ObjectPathNotFound;
             }
 
-            node.FillBuffer(buf => this.archiveProvider.ExtractFileUnmanaged(node, buf));
+            node.FillBuffer(buf => archiveProvider.ExtractFileUnmanaged(node, buf));
 
             unsafe
             {
@@ -163,7 +153,7 @@ namespace WinAVFS.Core
         public NtStatus GetFileInformation(string fileName, out FileInformation fileInfo, IDokanFileInfo info)
         {
             fileInfo = new FileInformation();
-            var node = this.GetNode(fileName, info);
+            var node = GetNode(fileName, info);
             if (node == null)
             {
                 return NtStatus.ObjectPathNotFound;
@@ -171,9 +161,9 @@ namespace WinAVFS.Core
 
             fileInfo.FileName = node.FullName;
             fileInfo.Attributes = node.IsDirectory ? FileAttributes.Directory : FileAttributes.Normal;
-            fileInfo.CreationTime = node.CreationTime ?? this.defaultTime;
-            fileInfo.LastAccessTime = node.LastAccessTime ?? this.defaultTime;
-            fileInfo.LastWriteTime = node.LastWriteTime ?? this.defaultTime;
+            fileInfo.CreationTime = node.CreationTime ?? _defaultTime;
+            fileInfo.LastAccessTime = node.LastAccessTime ?? _defaultTime;
+            fileInfo.LastWriteTime = node.LastWriteTime ?? _defaultTime;
             fileInfo.Length = node.Length;
             return NtStatus.Success;
         }
@@ -181,7 +171,7 @@ namespace WinAVFS.Core
         public NtStatus FindFiles(string fileName, out IList<FileInformation> files, IDokanFileInfo info)
         {
             files = EmptyFileInformation;
-            var node = this.GetNode(fileName, info);
+            var node = GetNode(fileName, info);
             if (node == null)
             {
                 return NtStatus.ObjectPathNotFound;
@@ -191,9 +181,9 @@ namespace WinAVFS.Core
             {
                 FileName = child.Value.Name,
                 Attributes = child.Value.IsDirectory ? FileAttributes.Directory : FileAttributes.Normal,
-                CreationTime = child.Value.CreationTime ?? this.defaultTime,
-                LastAccessTime = child.Value.LastAccessTime ?? this.defaultTime,
-                LastWriteTime = child.Value.LastWriteTime ?? this.defaultTime,
+                CreationTime = child.Value.CreationTime ?? _defaultTime,
+                LastAccessTime = child.Value.LastAccessTime ?? _defaultTime,
+                LastWriteTime = child.Value.LastWriteTime ?? _defaultTime,
                 Length = child.Value.Length
             }).ToList();
             return NtStatus.Success;
@@ -255,7 +245,7 @@ namespace WinAVFS.Core
         public NtStatus GetDiskFreeSpace(out long freeBytesAvailable, out long totalNumberOfBytes,
             out long totalNumberOfFreeBytes, IDokanFileInfo info)
         {
-            freeBytesAvailable = totalNumberOfFreeBytes = totalNumberOfBytes = this.fsTree.Root.Length;
+            freeBytesAvailable = totalNumberOfFreeBytes = totalNumberOfBytes = _fsTree.Root.Length;
             return NtStatus.Success;
         }
 

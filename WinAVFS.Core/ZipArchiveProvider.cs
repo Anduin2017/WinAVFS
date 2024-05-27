@@ -1,30 +1,28 @@
-﻿using System;
-using System.IO;
-using System.IO.Compression;
+﻿using System.IO.Compression;
 using System.Text;
 
-namespace WinAVFS.Core
+namespace WinAvfs.Core
 {
     public class ZipArchiveProvider : IArchiveProvider
     {
-        private readonly ZipArchive archive;
+        private readonly ZipArchive _archive;
 
         public ZipArchiveProvider(string path)
         {
             Console.WriteLine($"Opening archive {path}");
-            this.archive = new ZipArchive(new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read),
+            _archive = new ZipArchive(new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read),
                 ZipArchiveMode.Read, false, Encoding.Default);
         }
 
         public void Dispose()
         {
-            this.archive?.Dispose();
+            _archive?.Dispose();
         }
 
-        public FSTree ReadFSTree()
+        public FsTree ReadFsTree()
         {
-            var root = new FSTreeNode(true);
-            foreach (var entry in archive.Entries)
+            var root = new FsTreeNode(true);
+            foreach (var entry in _archive.Entries)
             {
                 Console.WriteLine($"Loading {entry.FullName} into FS tree");
                 var paths = entry.FullName.Split('/', '\\');
@@ -34,7 +32,7 @@ namespace WinAVFS.Core
                     node = node.GetOrAddChild(true, paths[i]);
                 }
 
-                var name = paths[paths.Length - 1];
+                var name = paths[^1];
                 if (!string.IsNullOrEmpty(name))
                 {
                     node = node.GetOrAddChild(false, name, entry.Length, entry.CompressedLength, entry);
@@ -44,11 +42,11 @@ namespace WinAVFS.Core
                 node.Context = entry;
             }
 
-            Console.WriteLine($"Loaded {archive.Entries.Count} entries from archive");
-            return new FSTree {Root = root};
+            Console.WriteLine($"Loaded {_archive.Entries.Count} entries from archive");
+            return new FsTree {Root = root};
         }
 
-        public void ExtractFileUnmanaged(FSTreeNode node, IntPtr buffer)
+        public void ExtractFileUnmanaged(FsTreeNode node, IntPtr buffer)
         {
             if (!(node.Context is ZipArchiveEntry entry))
             {

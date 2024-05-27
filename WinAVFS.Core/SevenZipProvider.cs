@@ -1,32 +1,29 @@
-﻿using System;
-using System.IO;
-using System.Runtime.InteropServices;
-using SevenZip;
+﻿using SevenZip;
 
-namespace WinAVFS.Core
+namespace WinAvfs.Core
 {
     public class SevenZipProvider : IArchiveProvider
     {
-        private readonly ConcurrentObjectPool<SevenZipExtractor> extractorPool;
+        private readonly ConcurrentObjectPool<SevenZipExtractor> _extractorPool;
 
         public SevenZipProvider(string path)
         {
             Console.WriteLine($"Loading archive {path} with 7z.dll");
-            this.extractorPool = new ConcurrentObjectPool<SevenZipExtractor>(() => new SevenZipExtractor(path));
+            _extractorPool = new ConcurrentObjectPool<SevenZipExtractor>(() => new SevenZipExtractor(path));
         }
 
         public void Dispose()
         {
-            foreach (var archive in this.extractorPool.GetAll())
+            foreach (var archive in _extractorPool.GetAll())
             {
                 archive.Dispose();
             }
         }
 
-        public FSTree ReadFSTree()
+        public FsTree ReadFsTree()
         {
-            var extractor = this.extractorPool.Get();
-            var root = new FSTreeNode(true);
+            var extractor = _extractorPool.Get();
+            var root = new FsTreeNode(true);
             foreach (var entry in extractor.ArchiveFileData)
             {
                 // Console.WriteLine($"Loading {entry.FileName} into FS tree");
@@ -37,9 +34,9 @@ namespace WinAVFS.Core
                     node = node.GetOrAddChild(true, paths[i]);
                 }
 
-                if (!string.IsNullOrEmpty(paths[paths.Length - 1]))
+                if (!string.IsNullOrEmpty(paths[^1]))
                 {
-                    node = node.GetOrAddChild(entry.IsDirectory, paths[paths.Length - 1], (long) entry.Size,
+                    node = node.GetOrAddChild(entry.IsDirectory, paths[^1], (long) entry.Size,
                         (long) entry.Size, entry.Index);
                     node.CreationTime = entry.CreationTime;
                     node.LastAccessTime = entry.LastAccessTime;
@@ -52,11 +49,11 @@ namespace WinAVFS.Core
             }
 
             Console.WriteLine($"Loaded {extractor.FilesCount} entries from archive");
-            this.extractorPool.Put(extractor);
-            return new FSTree {Root = root};
+            _extractorPool.Put(extractor);
+            return new FsTree {Root = root};
         }
 
-        public void ExtractFileUnmanaged(FSTreeNode node, IntPtr buffer)
+        public void ExtractFileUnmanaged(FsTreeNode node, IntPtr buffer)
         {
             if (!(node.Context is int index))
             {
@@ -67,9 +64,9 @@ namespace WinAVFS.Core
             {
                 using var target = new UnmanagedMemoryStream((byte*) buffer.ToPointer(), node.Length, node.Length,
                     FileAccess.Write);
-                var extractor = this.extractorPool.Get();
+                var extractor = _extractorPool.Get();
                 extractor.ExtractFile(index, target);
-                this.extractorPool.Put(extractor);
+                _extractorPool.Put(extractor);
             }
         }
     }

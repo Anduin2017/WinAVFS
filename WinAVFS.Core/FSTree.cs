@@ -1,7 +1,7 @@
-﻿namespace WinAVFS.Core
+﻿namespace WinAvfs.Core
 {
-    public class FSTree
+    public class FsTree
     {
-        public FSTreeNode Root { get; set; }
+        public FsTreeNode Root { get; set; }
     }
 }

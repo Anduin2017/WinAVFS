@@ -1,12 +1,10 @@
-﻿using System;
-using System.IO;
-
-namespace WinAVFS.Core
+﻿
+namespace WinAvfs.Core
 {
     public interface IArchiveProvider : IDisposable
     {
-        FSTree ReadFSTree();
+        FsTree ReadFsTree();
 
-        void ExtractFileUnmanaged(FSTreeNode node, IntPtr buffer);
+        void ExtractFileUnmanaged(FsTreeNode node, IntPtr buffer);
     }
 }
