@@ -1,36 +1,16 @@
 ﻿using System.Collections.Concurrent;
 using System.Security.AccessControl;
 using DokanNet;
-using DokanNet.Logging;
 using FileAccess = DokanNet.FileAccess;
 
 namespace WinAvfs.Core
 {
-    public class ReadOnlyAvfs(IArchiveProvider archiveProvider) : IDokanOperationsUnsafe
+    public class ReadOnlyAvfs(IArchiveProvider archiveProvider, FsTree fsTree) : IDokanOperationsUnsafe
     {
-        private FsTree _fsTree;
-
-        public void Mount(string mountPoint)
-        {
-            Unmount(mountPoint);
-
-            _fsTree = archiveProvider.ReadFsTree();
-            this.Mount(mountPoint, DokanOptions.WriteProtection | DokanOptions.MountManager, new NullLogger());
-        }
-
-        public void Unmount(string mountPoint)
-        {
-            Dokan.RemoveMountPoint(mountPoint);
-            _fsTree = null;
-        }
-
-        #region Private helper methods
-
         private static readonly FileInformation[] EmptyFileInformation = [];
         private readonly DateTime _defaultTime = DateTime.Now;
 
-        private readonly ConcurrentDictionary<string, FsTreeNode> _nodeCache =
-            new ConcurrentDictionary<string, FsTreeNode>();
+        private readonly ConcurrentDictionary<string, FsTreeNode> _nodeCache = new();
 
         private FsTreeNode GetNode(string fileName, IDokanFileInfo info = null)
         {
@@ -46,7 +26,7 @@ namespace WinAvfs.Core
             }
 
             var paths = fileName.Split('\\');
-            var node = _fsTree.Root;
+            var node = fsTree.Root;
             foreach (var path in paths.Where(y => !string.IsNullOrEmpty(y)))
             {
                 if (!node.IsDirectory || !node.Children.TryGetValue(path, out var child))
@@ -60,8 +40,6 @@ namespace WinAvfs.Core
             _nodeCache.TryAdd(fileName, node);
             return node;
         }
-
-        #endregion
 
         #region Dokan filesystem implementation
 
@@ -245,7 +223,9 @@ namespace WinAvfs.Core
         public NtStatus GetDiskFreeSpace(out long freeBytesAvailable, out long totalNumberOfBytes,
             out long totalNumberOfFreeBytes, IDokanFileInfo info)
         {
-            freeBytesAvailable = totalNumberOfFreeBytes = totalNumberOfBytes = _fsTree.Root.Length;
+            totalNumberOfBytes = fsTree.Root.Length;
+            freeBytesAvailable = 0;
+            totalNumberOfFreeBytes = 0;
             return NtStatus.Success;
         }
 
@@ -253,7 +233,7 @@ namespace WinAvfs.Core
             out string fileSystemName, out uint maximumComponentLength, IDokanFileInfo info)
         {
             volumeLabel = "AVFS";
-            fileSystemName = "exFAT";
+            fileSystemName = "avfs";
             features = FileSystemFeatures.CasePreservedNames | FileSystemFeatures.UnicodeOnDisk |
                        FileSystemFeatures.VolumeIsCompressed | FileSystemFeatures.ReadOnlyVolume;
             maximumComponentLength = 260;
@@ -271,6 +251,12 @@ namespace WinAvfs.Core
             IDokanFileInfo info)
         {
             return NtStatus.AccessDenied;
+        }
+
+        public NtStatus Mounted(string mountPoint, IDokanFileInfo info)
+        {
+            Console.WriteLine($"Mounted readonly filesystem at {mountPoint}");
+            return NtStatus.Success;
         }
 
         public NtStatus Mounted(IDokanFileInfo info)

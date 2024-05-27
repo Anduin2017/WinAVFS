@@ -1,14 +1,24 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>WinAvfs.Cli</AssemblyName>
+    <RootNamespace>WinAvfs.Cli</RootNamespace>
+    <IsTestProject>false</IsTestProject>
+    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <IsPackable>true</IsPackable>
+    <PackAsTool>true</PackAsTool>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <Company>WinAvfs</Company>
+    <Product>Cli</Product>
+    <Description>Nuget package of 'Cli' provided by WinAvfs</Description>
+    <PackageId>WinAvfs.Cli</PackageId>
+    <PackageTags>nuget package dotnet csproj dependencies</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
-
   <ItemGroup>
-    <ProjectReference Include="..\WinAVFS.Core\WinAvfs.Core.csproj" />
+    <ProjectReference Include="..\WinAvfs.Core\WinAvfs.Core.csproj" />
+    <None Include="..\README.md" Pack="true" PackagePath="." />
   </ItemGroup>
-
 </Project>

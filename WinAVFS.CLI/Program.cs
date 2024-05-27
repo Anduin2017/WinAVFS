@@ -1,8 +1,10 @@
-﻿using WinAvfs.Core;
+﻿using DokanNet;
+using DokanNet.Logging;
+using WinAvfs.Core;
 
 namespace WinAvfs.CLI
 {
-    internal class Program
+    public abstract class Program
     {
         public static void Main(string[] args)
         {
@@ -13,8 +15,31 @@ namespace WinAvfs.CLI
                 return;
             }
 
-            var fs = new ReadOnlyAvfs(new SevenZipProvider(args[0]));
-            fs.Mount(args[1]);
+            var pathToArchive = args[0];
+            var mountPoint = args[1];
+
+            var provider = new ZipArchiveProvider(pathToArchive);
+            
+            var mre = new ManualResetEvent(false);
+            var dokanLogger = new NullLogger();
+            using var dokan = new Dokan(dokanLogger);
+            Console.CancelKeyPress += (_, e) =>
+            {
+                e.Cancel = true;
+                mre.Set();
+            };
+
+            var sampleFs = new ReadOnlyAvfs(provider, provider.ReadFsTree());
+            var dokanBuilder = new DokanInstanceBuilder(dokan)
+                .ConfigureOptions(options =>
+                {
+                    options.Options = DokanOptions.WriteProtection | DokanOptions.MountManager;
+                    options.MountPoint = mountPoint;
+                });
+            using (dokanBuilder.Build(sampleFs))
+            {
+                mre.WaitOne();
+            }
         }
     }
 }
