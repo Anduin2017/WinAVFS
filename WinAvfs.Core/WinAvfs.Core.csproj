@@ -11,6 +11,5 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="DokanNet" Version="2.1.0" />
-    <PackageReference Include="Squid-Box.SevenZipSharp" Version="1.6.2.24" />
   </ItemGroup>
 </Project>
